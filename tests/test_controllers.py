@@ -1,10 +1,31 @@
 import json
+from unittest.mock import MagicMock, patch
 
-from odoo.tests.common import HttpCase, tagged
+from odoo import fields
+from odoo.tests.common import TransactionCase, tagged
+from odoo.http import Response as JsonResponse
+
+
+def _build_mock_request(env, method='GET', data=b'', headers=None):
+    """Build a mock odoo.http.request with a real Odoo env."""
+    req = MagicMock()
+    req.httprequest = MagicMock()
+    req.httprequest.method = method
+    req.httprequest.data = data
+    req.httprequest.headers = headers or {}
+
+    # Wire up a real Odoo env so .sudo() / .search() / .create() work
+    req.env = env
+
+    # Capture make_json_response calls
+    req.make_json_response.side_effect = lambda body, status=200: (
+        JsonResponse(json.dumps(body), status=status, content_type='application/json')
+    )
+    return req
 
 
 @tagged('post_install', '-at_install')
-class TestReceiptPrinterControllers(HttpCase):
+class TestReceiptPrinterControllers(TransactionCase):
 
     def setUp(self):
         super().setUp()
@@ -20,11 +41,32 @@ class TestReceiptPrinterControllers(HttpCase):
             'api_key': 'other-api-key-67890',
         })
 
-    def _url(self, path):
-        return f'/web{path}'
+    def _make_pending_jobs_request(self, api_key=None):
+        """Call the pending_jobs controller method with a mocked request."""
+        from odoo.addons.receipt_printer.controllers.main import ReceiptPrinterController
+        ctrl = ReceiptPrinterController()
 
-    def _auth_headers(self, api_key):
-        return {'Authorization': f'Bearer {api_key}'}
+        headers = {}
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+
+        req = _build_mock_request(self.env, method='GET', headers=headers)
+        with patch('odoo.addons.receipt_printer.controllers.main.request', req):
+            return ctrl.pending_jobs()
+
+    def _make_ack_request(self, api_key=None, payload=None):
+        """Call the ack controller method with a mocked request."""
+        from odoo.addons.receipt_printer.controllers.main import ReceiptPrinterController
+        ctrl = ReceiptPrinterController()
+
+        headers = {'Content-Type': 'application/json'}
+        if api_key:
+            headers['Authorization'] = f'Bearer {api_key}'
+
+        body = json.dumps(payload or {}).encode()
+        req = _build_mock_request(self.env, method='POST', data=body, headers=headers)
+        with patch('odoo.addons.receipt_printer.controllers.main.request', req):
+            return ctrl.ack()
 
     # --- pending_jobs tests ---
 
@@ -34,12 +76,9 @@ class TestReceiptPrinterControllers(HttpCase):
             'printer_id': self.printer.id,
             'payload': '{"text": "receipt"}',
         })
-        resp = self.url_open(
-            self._url('/receipt_printer/pending_jobs'),
-            headers=self._auth_headers(self.printer.api_key),
-        )
+        resp = self._make_pending_jobs_request(api_key=self.printer.api_key)
+        data = json.loads(resp.data)
         self.assertEqual(resp.status_code, 200)
-        data = json.loads(resp.text)
         self.assertIn('jobs', data)
         self.assertEqual(len(data['jobs']), 1)
         self.assertEqual(data['jobs'][0]['id'], job.id)
@@ -47,12 +86,9 @@ class TestReceiptPrinterControllers(HttpCase):
 
     def test_pending_jobs_no_jobs(self):
         """Printer with no pending jobs returns empty list."""
-        resp = self.url_open(
-            self._url('/receipt_printer/pending_jobs'),
-            headers=self._auth_headers(self.printer.api_key),
-        )
+        resp = self._make_pending_jobs_request(api_key=self.printer.api_key)
+        data = json.loads(resp.data)
         self.assertEqual(resp.status_code, 200)
-        data = json.loads(resp.text)
         self.assertEqual(data['jobs'], [])
 
     def test_pending_jobs_filters_by_printer(self):
@@ -65,11 +101,8 @@ class TestReceiptPrinterControllers(HttpCase):
             'printer_id': self.other_printer.id,
             'payload': 'other job',
         })
-        resp = self.url_open(
-            self._url('/receipt_printer/pending_jobs'),
-            headers=self._auth_headers(self.printer.api_key),
-        )
-        data = json.loads(resp.text)
+        resp = self._make_pending_jobs_request(api_key=self.printer.api_key)
+        data = json.loads(resp.data)
         self.assertEqual(len(data['jobs']), 1)
         self.assertEqual(data['jobs'][0]['id'], my_job.id)
 
@@ -84,29 +117,21 @@ class TestReceiptPrinterControllers(HttpCase):
             'payload': 'done',
             'state': 'printed',
         })
-        resp = self.url_open(
-            self._url('/receipt_printer/pending_jobs'),
-            headers=self._auth_headers(self.printer.api_key),
-        )
-        data = json.loads(resp.text)
+        resp = self._make_pending_jobs_request(api_key=self.printer.api_key)
+        data = json.loads(resp.data)
         self.assertEqual(len(data['jobs']), 1)
         self.assertEqual(data['jobs'][0]['id'], pending.id)
 
     def test_pending_jobs_missing_auth(self):
         """Request without auth header returns 401."""
-        resp = self.url_open(
-            self._url('/receipt_printer/pending_jobs'),
-            expect_errors=True,
-        )
+        resp = self._make_pending_jobs_request(api_key=None)
+        data = json.loads(resp.data)
         self.assertEqual(resp.status_code, 401)
 
     def test_pending_jobs_invalid_auth(self):
         """Request with wrong api_key returns 401."""
-        resp = self.url_open(
-            self._url('/receipt_printer/pending_jobs'),
-            headers={'Authorization': 'Bearer wrong-key'},
-            expect_errors=True,
-        )
+        resp = self._make_pending_jobs_request(api_key='wrong-key')
+        data = json.loads(resp.data)
         self.assertEqual(resp.status_code, 401)
 
     # --- ack tests ---
@@ -117,17 +142,9 @@ class TestReceiptPrinterControllers(HttpCase):
             'printer_id': self.printer.id,
             'payload': '{}',
         })
-        payload = json.dumps({
-            'job_id': job.id,
-            'status': 'printed',
-        })
-        resp = self.url_open(
-            self._url('/receipt_printer/ack'),
-            data=payload,
-            headers={
-                **self._auth_headers(self.printer.api_key),
-                'Content-Type': 'application/json',
-            },
+        resp = self._make_ack_request(
+            api_key=self.printer.api_key,
+            payload={'job_id': job.id, 'status': 'printed'},
         )
         self.assertEqual(resp.status_code, 200)
         job.invalidate_recordset(['state'])
@@ -139,18 +156,9 @@ class TestReceiptPrinterControllers(HttpCase):
             'printer_id': self.printer.id,
             'payload': '{}',
         })
-        payload = json.dumps({
-            'job_id': job.id,
-            'status': 'failed',
-            'error_message': 'Paper jam',
-        })
-        resp = self.url_open(
-            self._url('/receipt_printer/ack'),
-            data=payload,
-            headers={
-                **self._auth_headers(self.printer.api_key),
-                'Content-Type': 'application/json',
-            },
+        resp = self._make_ack_request(
+            api_key=self.printer.api_key,
+            payload={'job_id': job.id, 'status': 'failed', 'error_message': 'Paper jam'},
         )
         self.assertEqual(resp.status_code, 200)
         job.invalidate_recordset(['state', 'error_message'])
@@ -163,53 +171,28 @@ class TestReceiptPrinterControllers(HttpCase):
             'printer_id': self.other_printer.id,
             'payload': '{}',
         })
-        payload = json.dumps({
-            'job_id': other_job.id,
-            'status': 'printed',
-        })
-        resp = self.url_open(
-            self._url('/receipt_printer/ack'),
-            data=payload,
-            headers={
-                **self._auth_headers(self.printer.api_key),
-                'Content-Type': 'application/json',
-            },
-            expect_errors=True,
+        resp = self._make_ack_request(
+            api_key=self.printer.api_key,
+            payload={'job_id': other_job.id, 'status': 'printed'},
         )
         self.assertIn(resp.status_code, (400, 403, 404))
 
     def test_ack_nonexistent_job(self):
         """Ack with nonexistent job_id returns 404."""
-        payload = json.dumps({
-            'job_id': 999999,
-            'status': 'printed',
-        })
-        resp = self.url_open(
-            self._url('/receipt_printer/ack'),
-            data=payload,
-            headers={
-                **self._auth_headers(self.printer.api_key),
-                'Content-Type': 'application/json',
-            },
-            expect_errors=True,
+        resp = self._make_ack_request(
+            api_key=self.printer.api_key,
+            payload={'job_id': 999999, 'status': 'printed'},
         )
         self.assertIn(resp.status_code, (400, 404))
 
     def test_ack_missing_auth(self):
         """Ack without auth header returns 401."""
-        resp = self.url_open(
-            self._url('/receipt_printer/ack'),
-            data='{}',
-            expect_errors=True,
-        )
+        resp = self._make_ack_request(api_key=None, payload={})
+        data = json.loads(resp.data)
         self.assertEqual(resp.status_code, 401)
 
     def test_ack_invalid_auth(self):
         """Ack with wrong api_key returns 401."""
-        resp = self.url_open(
-            self._url('/receipt_printer/ack'),
-            data='{}',
-            headers={'Authorization': 'Bearer wrong'},
-            expect_errors=True,
-        )
+        resp = self._make_ack_request(api_key='wrong', payload={})
+        data = json.loads(resp.data)
         self.assertEqual(resp.status_code, 401)
