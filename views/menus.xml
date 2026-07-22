@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_root"
+              name="Receipt Printer"
+              sequence="99"/>
+
+    <menuitem id="menu_printers"
+              name="Printers"
+              parent="menu_root"
+              action="printer_action"
+              sequence="10"/>
+
+    <menuitem id="menu_jobs"
+              name="Print Jobs"
+              parent="menu_root"
+              action="job_action"
+              sequence="20"/>
+</odoo>

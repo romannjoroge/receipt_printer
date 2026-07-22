@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="printer_view_form" model="ir.ui.view">
+        <field name="name">receipt_printer.print.printer.form</field>
+        <field name="model">receipt_printer.print.printer</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_test_print" string="Test Print"
+                            type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="connection_type"/>
+                            <field name="identifier"/>
+                        </group>
+                        <group>
+                            <field name="api_key"/>
+                            <field name="active"/>
+                            <field name="state"/>
+                            <field name="last_seen"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="printer_view_tree" model="ir.ui.view">
+        <field name="name">receipt_printer.print.printer.tree</field>
+        <field name="model">receipt_printer.print.printer</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="connection_type"/>
+                <field name="identifier"/>
+                <field name="state"/>
+                <field name="last_seen"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="printer_action" model="ir.actions.act_window">
+        <field name="name">Printers</field>
+        <field name="res_model">receipt_printer.print.printer</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

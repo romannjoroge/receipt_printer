@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_printer_user,printer.user,model_receipt_printer_print_printer,receipt_printer.group_printer_user,1,1,1,1
+access_printer_manager,printer.manager,model_receipt_printer_print_printer,receipt_printer.group_printer_manager,1,1,1,1
+access_job_user,job.user,model_receipt_printer_print_job,receipt_printer.group_printer_user,1,1,1,1
+access_job_manager,job.manager,model_receipt_printer_print_job,receipt_printer.group_printer_manager,1,1,1,1
