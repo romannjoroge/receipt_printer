@@ -29,6 +29,14 @@ class ReceiptPrinterPrinter(models.Model):
         store=True,
     )
 
+    def action_test_print(self):
+        self.ensure_one()
+        import json
+        self.env['receipt_printer.print.job'].create({
+            'printer_id': self.id,
+            'payload': json.dumps({'type': 'test', 'text': 'Test print from Odoo'}),
+        })
+
     @api.depends('last_seen')
     def _compute_state(self):
         for record in self:
