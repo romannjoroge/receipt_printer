@@ -78,7 +78,7 @@ class ReceiptPrinterController(http.Controller):
 
         return request.make_json_response({'status': 'ok'})
 
-    @http.route('/receipt_printer/create_job', type='json', auth='user',
+    @http.route('/receipt_printer/create_job', type='jsonrpc', auth='user',
                 methods=['POST'], csrf=False)
     def create_job(self, printer_id=None, payload=None, **kwargs):
         if not printer_id or not payload:
