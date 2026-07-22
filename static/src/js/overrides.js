@@ -54,6 +54,7 @@ patch(Chrome.prototype, {
                     [[pos.config.id], receiptImage]
                 );
 
+                btn.innerHTML = '<i class="fa fa-check me-1"></i>Sent to Thermal Printer';
                 this.env.services.notification.add(
                     _t("Receipt sent to thermal printer"),
                     { type: "success" }

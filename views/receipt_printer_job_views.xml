@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="job_view_form" model="ir.ui.view">
+        <field name="name">receipt_printer.print.job.form</field>
+        <field name="model">receipt_printer.print.job</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="printer_id"/>
+                            <field name="state" widget="badge" decoration-success="state == 'printed'" decoration-danger="state == 'failed'" decoration-info="state == 'pending'"/>
+                            <field name="create_date"/>
+                            <field name="printed_date"/>
+                        </group>
+                        <group>
+                            <field name="error_message" invisible="not error_message"/>
+                        </group>
+                    </group>
+                    <separator string="Receipt"/>
+                    <div class="text-center" invisible="not receipt_image">
+                        <field name="receipt_image" widget="image" class="oe_link"/>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="job_view_list" model="ir.ui.view">
         <field name="name">receipt_printer.print.job.list</field>
         <field name="model">receipt_printer.print.job</field>
         <field name="arch" type="xml">
             <list>
                 <field name="printer_id"/>
-                <field name="state"/>
+                <field name="state" widget="badge" decoration-success="state == 'printed'" decoration-danger="state == 'failed'" decoration-info="state == 'pending'"/>
                 <field name="create_date"/>
                 <field name="printed_date"/>
                 <field name="error_message"/>

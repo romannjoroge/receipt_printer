@@ -12,6 +12,7 @@ class ReceiptPrinterJob(models.Model):
         ondelete='cascade',
     )
     payload = fields.Text(required=True)
+    receipt_image = fields.Image("Receipt Image", max_width=400, max_height=600)
     state = fields.Selection(
         selection=[
             ('pending', 'Pending'),
