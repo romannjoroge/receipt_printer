@@ -28,6 +28,21 @@ class ReceiptPrinterPrinter(models.Model):
         compute='_compute_state',
         store=True,
     )
+    pos_config_ids = fields.One2many(
+        comodel_name='pos.config',
+        inverse_name='receipt_printer_printer_id',
+        string='Linked POS',
+    )
+    pos_config_names = fields.Char(
+        compute='_compute_pos_config_names',
+        string='Linked POS',
+    )
+
+    def _compute_pos_config_names(self):
+        for record in self:
+            record.pos_config_names = ', '.join(
+                record.pos_config_ids.mapped('name')
+            ) or '-'
 
     def action_test_print(self):
         self.ensure_one()

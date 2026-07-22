@@ -36,6 +36,13 @@ class PosConfig(models.Model):
             'payload': json.dumps(order_data),
         })
 
+    @api.model
+    def _load_pos_data_fields(self, config):
+        fields = super()._load_pos_data_fields(config)
+        if fields:
+            fields.append('receipt_printer_printer_id')
+        return fields
+
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'

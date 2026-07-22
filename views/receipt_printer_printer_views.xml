@@ -36,6 +36,7 @@
                 <field name="name"/>
                 <field name="connection_type"/>
                 <field name="identifier"/>
+                <field name="pos_config_names"/>
                 <field name="state"/>
                 <field name="last_seen"/>
             </list>
