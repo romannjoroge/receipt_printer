@@ -3,6 +3,7 @@
 import { patch } from "@web/core/utils/patch";
 import { Chrome } from "@point_of_sale/app/pos_app";
 import { _t } from "@web/core/l10n/translation";
+import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/order_receipt";
 
 patch(Chrome.prototype, {
     setup() {
@@ -36,21 +37,18 @@ patch(Chrome.prototype, {
             const order = pos.getOrder();
             if (!order) return;
 
-            const orderData = {
-                orderlines: order.getOrderlines().map((line) => ({
-                    product_name: line.full_product_name || line.product_id?.display_name,
-                    qty: line.qty,
-                    price: line.prices?.total_included || 0,
-                })),
-                total: order.priceIncl || 0,
-                partner: order.getPartner()?.name || "",
-                date: order.date_order,
-            };
+            // Render the receipt to a JPEG image, same as the receipt screen does
+            const renderer = this.env.services.renderer;
+            const receiptImage = await renderer.toJpeg(
+                OrderReceipt,
+                { order: order, basic_receipt: false },
+                { addClass: "pos-receipt-print p-3" }
+            );
 
             await pos.data.call(
                 "pos.config",
                 "action_print_receipt",
-                [[pos.config.id], orderData]
+                [[pos.config.id], receiptImage]
             );
 
             this.env.services.notification.add(
