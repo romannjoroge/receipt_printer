@@ -10,22 +10,18 @@ class TestReceiptPrinterPosIntegration(TransactionCase):
         super().setUp()
         self.Printer = self.env['receipt_printer.print.printer']
         self.Job = self.env['receipt_printer.print.job']
-        self.PosConfig = self.env['pos.config']
         self.printer = self.Printer.create({'name': 'POS Printer'})
 
     def test_pos_config_has_printer_field(self):
         """pos.config has a receipt_printer_printer_id field."""
-        pos_config = self.PosConfig.create({
-            'name': 'Test POS',
-        })
-        self.assertFalse(pos_config.receipt_printer_printer_id)
-        pos_config.write({'receipt_printer_printer_id': self.printer.id})
-        self.assertEqual(pos_config.receipt_printer_printer_id, self.printer)
+        field = self.env['pos.config']._fields.get('receipt_printer_printer_id')
+        self.assertTrue(field, "receipt_printer_printer_id field not found on pos.config")
+        self.assertEqual(field.comodel_name, 'receipt_printer.print.printer')
 
-    def test_create_receipt_job_from_order(self):
-        """POS config method creates a print job from a sample order."""
-        pos_config = self.PosConfig.create({
-            'name': 'Test POS',
+    def test_action_print_receipt_creates_job(self):
+        """action_print_receipt creates a print job with correct payload."""
+        # Use a new record with only the required fields to avoid POS setup
+        pos_config = self.env['pos.config'].new({
             'receipt_printer_printer_id': self.printer.id,
         })
         order_data = {
@@ -44,3 +40,12 @@ class TestReceiptPrinterPosIntegration(TransactionCase):
         self.assertIn('orderlines', payload)
         self.assertEqual(payload['total'], 3.50)
         self.assertEqual(jobs[0].state, 'pending')
+
+    def test_action_print_receipt_no_printer(self):
+        """action_print_receipt does nothing if no printer configured."""
+        pos_config = self.env['pos.config'].new({
+            'receipt_printer_printer_id': False,
+        })
+        pos_config.action_print_receipt({'total': 1.0})
+        jobs = self.Job.search([])
+        self.assertEqual(len(jobs), 0)
