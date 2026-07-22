@@ -34,27 +34,38 @@ patch(Chrome.prototype, {
         btn.className = 'button print btn btn-lg btn-success w-100 py-3 thermal-printer-btn';
         btn.innerHTML = '<i class="fa fa-print me-1"></i>Send to Thermal Printer';
         btn.addEventListener('click', async () => {
-            const order = pos.getOrder();
-            if (!order) return;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa fa-fw fa-spin fa-circle-o-notch me-1"></i>Sending...';
 
-            // Render the receipt to a JPEG image, same as the receipt screen does
-            const renderer = this.env.services.renderer;
-            const receiptImage = await renderer.toJpeg(
-                OrderReceipt,
-                { order: order, basic_receipt: false },
-                { addClass: "pos-receipt-print p-3" }
-            );
+            try {
+                const order = pos.getOrder();
+                if (!order) return;
 
-            await pos.data.call(
-                "pos.config",
-                "action_print_receipt",
-                [[pos.config.id], receiptImage]
-            );
+                const renderer = this.env.services.renderer;
+                const receiptImage = await renderer.toJpeg(
+                    OrderReceipt,
+                    { order: order, basic_receipt: false },
+                    { addClass: "pos-receipt-print p-3" }
+                );
 
-            this.env.services.notification.add(
-                _t("Receipt sent to thermal printer"),
-                { type: "success" }
-            );
+                await pos.data.call(
+                    "pos.config",
+                    "action_print_receipt",
+                    [[pos.config.id], receiptImage]
+                );
+
+                this.env.services.notification.add(
+                    _t("Receipt sent to thermal printer"),
+                    { type: "success" }
+                );
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-print me-1"></i>Send to Thermal Printer';
+                this.env.services.notification.add(
+                    _t("Failed to send receipt. Please try again."),
+                    { type: "danger" }
+                );
+            }
         });
 
         const printDiv = receiptOptions.querySelector('.d-flex.gap-1');
