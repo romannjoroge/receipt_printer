@@ -7,7 +7,7 @@
         bypassing the browser print dialog.
     """,
     'author': 'Jani',
-    'category': 'Technical',
+    'category': 'Tools',
     'license': 'LGPL-3',
     'depends': ['base', 'point_of_sale'],
     'data': [

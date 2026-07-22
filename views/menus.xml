@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_root"
+    <menuitem id="receipt_printer_menu_root"
               name="Receipt Printer"
+              web_icon="receipt_printer,static/description/icon.png"
+              groups="base.group_user"
               sequence="99"/>
 
-    <menuitem id="menu_printers"
+    <menuitem id="receipt_printer_menu_printers"
               name="Printers"
-              parent="menu_root"
+              parent="receipt_printer_menu_root"
               action="printer_action"
               sequence="10"/>
 
-    <menuitem id="menu_jobs"
+    <menuitem id="receipt_printer_menu_jobs"
               name="Print Jobs"
-              parent="menu_root"
+              parent="receipt_printer_menu_root"
               action="job_action"
               sequence="20"/>
 </odoo>

@@ -71,6 +71,11 @@ odoo-bin -c odoo.conf -i receipt_printer --test-enable \
   --test-tags /receipt_printer:TestDirectPrintJob --stop-after-init -d test_db
 ```
 
+```bash
+cd "C:\Program Files\Odoo 19.0e.20260702\server\"
+"..\python\python.exe" odoo-bin -c odoo.conf --addons-path="odoo\addons,C:\Odoo\jani" -d receipt_printer -i receipt_printer -u receipt_printer --test-enable --stop-after-init --log-level=test
+```
+
 Check the log output for `FAIL`/`ERROR` — Odoo test runs don't always exit
 non-zero in older versions, so don't rely on exit code alone.
 
