@@ -1,14 +1,27 @@
 /** @odoo-module */
 
 import { patch } from "@web/core/utils/patch";
-import { PosStore } from "@point_of_sale/app/store/pos_store";
-import { rpc } from "@web/network/rpc";
+import { ReceiptScreen } from "@point_of_sale/app/screens/receipt_screen/receipt_screen";
+import { useTrackedAsync } from "@point_of_sale/app/hooks/hooks";
+import { _t } from "@web/core/l10n/translation";
 
-patch(PosStore.prototype, {
-    async printReceipt(order) {
-        const printerId = this.config.receipt_printer_printer_id;
+patch(ReceiptScreen.prototype, {
+    setup() {
+        super.setup();
+        this.sendToPrinter = useTrackedAsync(
+            this._sendToThermalPrinter.bind(this)
+        );
+    },
+
+    get hasThermalPrinter() {
+        return !!this.pos.config.receipt_printer_printer_id;
+    },
+
+    async _sendToThermalPrinter() {
+        const order = this.currentOrder;
+        const printerId = this.pos.config.receipt_printer_printer_id?.id;
         if (!printerId) {
-            return super.printReceipt(order);
+            return;
         }
 
         const orderData = {
@@ -18,16 +31,19 @@ patch(PosStore.prototype, {
                 price: line.get_price_with_tax(),
             })),
             total: order.get_total_with_tax(),
+            partner: order.getPartner()?.name || "",
+            date: order.date_order,
         };
 
-        await rpc("/receipt_printer/pending_jobs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-        });
+        await this.pos.data.call(
+            "pos.config",
+            "action_print_receipt",
+            [[this.pos.config.id], orderData]
+        );
 
-        await this.env.services.rpc("/receipt_printer/create_job", {
-            printer_id: printerId,
-            payload: JSON.stringify(orderData),
-        });
+        this.env.services.notification.add(
+            _t("Receipt sent to thermal printer"),
+            { type: "success" }
+        );
     },
 });
