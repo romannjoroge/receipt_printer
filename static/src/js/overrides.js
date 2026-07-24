@@ -8,14 +8,15 @@ import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/
 patch(Chrome.prototype, {
     setup() {
         super.setup();
+        this._thermalPrinterSentOrders = new Set();
         this._thermalPrinterInterval = setInterval(() => {
-            this._tryInjectThermalPrinterButton();
+            this._tryAutoPrintReceipt();
         }, 500);
     },
 
-    _tryInjectThermalPrinterButton() {
+    async _tryAutoPrintReceipt() {
         const receiptOptions = document.querySelector('.receipt-options');
-        if (!receiptOptions || receiptOptions.querySelector('.thermal-printer-btn')) {
+        if (!receiptOptions) {
             return;
         }
 
@@ -30,50 +31,42 @@ patch(Chrome.prototype, {
             return;
         }
 
-        const btn = document.createElement('button');
-        btn.className = 'button print btn btn-lg btn-success w-100 py-3 thermal-printer-btn';
-        btn.innerHTML = '<i class="fa fa-print me-1"></i>Send to Thermal Printer';
-        btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa fa-fw fa-spin fa-circle-o-notch me-1"></i>Sending...';
+        const order = pos.getOrder();
+        if (!order) {
+            return;
+        }
 
-            try {
-                const order = pos.getOrder();
-                if (!order) return;
+        // Prevent duplicate jobs for the same order
+        if (this._thermalPrinterSentOrders.has(order.uuid)) {
+            return;
+        }
+        this._thermalPrinterSentOrders.add(order.uuid);
 
-                const renderer = this.env.services.renderer;
-                const receiptImage = await renderer.toJpeg(
-                    OrderReceipt,
-                    { order: order, basic_receipt: false },
-                    { addClass: "pos-receipt-print p-3" }
-                );
+        try {
+            const renderer = this.env.services.renderer;
+            const receiptImage = await renderer.toJpeg(
+                OrderReceipt,
+                { order: order, basic_receipt: false },
+                { addClass: "pos-receipt-print p-3" }
+            );
 
-                await pos.data.call(
-                    "pos.config",
-                    "action_print_receipt",
-                    [[pos.config.id], receiptImage]
-                );
+            await pos.data.call(
+                "pos.config",
+                "action_print_receipt",
+                [[pos.config.id], receiptImage]
+            );
 
-                btn.innerHTML = '<i class="fa fa-check me-1"></i>Sent to Thermal Printer';
-                this.env.services.notification.add(
-                    _t("Receipt sent to thermal printer"),
-                    { type: "success" }
-                );
-            } catch (e) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa fa-print me-1"></i>Send to Thermal Printer';
-                this.env.services.notification.add(
-                    _t("Failed to send receipt. Please try again."),
-                    { type: "danger" }
-                );
-            }
-        });
-
-        const printDiv = receiptOptions.querySelector('.d-flex.gap-1');
-        if (printDiv) {
-            printDiv.parentNode.insertBefore(btn, printDiv.nextSibling);
-        } else {
-            receiptOptions.prepend(btn);
+            this.env.services.notification.add(
+                _t("Receipt automatically sent to thermal printer"),
+                { type: "success" }
+            );
+        } catch (e) {
+            // Remove from sent set so it can retry on next poll
+            this._thermalPrinterSentOrders.delete(order.uuid);
+            this.env.services.notification.add(
+                _t("Failed to send receipt to thermal printer. Retrying..."),
+                { type: "warning" }
+            );
         }
     },
 });
