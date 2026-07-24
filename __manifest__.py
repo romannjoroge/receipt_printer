@@ -17,6 +17,7 @@
         'views/receipt_printer_job_views.xml',
         'views/pos_config_views.xml',
         'views/res_config_settings_views.xml',
+        'views/pos_menus.xml',
         'views/menus.xml',
     ],
     'installable': True,
@@ -25,6 +26,7 @@
     'assets': {
         'point_of_sale._assets_pos': [
             'receipt_printer/static/src/js/**/*',
+            'receipt_printer/static/src/xml/**/*',
         ],
     },
 }

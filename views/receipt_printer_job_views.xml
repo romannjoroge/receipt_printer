@@ -9,6 +9,7 @@
                     <group>
                         <group>
                             <field name="printer_id"/>
+                            <field name="pos_config_id" invisible="not pos_config_id"/>
                             <field name="state" widget="badge" decoration-success="state == 'printed'" decoration-danger="state == 'failed'" decoration-info="state == 'pending'"/>
                             <field name="create_date"/>
                             <field name="printed_date"/>
@@ -32,6 +33,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="printer_id"/>
+                <field name="pos_config_id" optional="show"/>
                 <field name="state" widget="badge" decoration-success="state == 'printed'" decoration-danger="state == 'failed'" decoration-info="state == 'pending'"/>
                 <field name="create_date"/>
                 <field name="printed_date"/>
@@ -40,9 +42,31 @@
         </field>
     </record>
 
+    <record id="job_view_search" model="ir.ui.view">
+        <field name="name">receipt_printer.print.job.search</field>
+        <field name="model">receipt_printer.print.job</field>
+        <field name="arch" type="xml">
+            <search string="Print Jobs">
+                <field name="printer_id"/>
+                <field name="pos_config_id"/>
+                <filter name="filter_pending" string="Pending" domain="[('state', '=', 'pending')]"/>
+                <filter name="filter_printed" string="Printed" domain="[('state', '=', 'printed')]"/>
+                <filter name="filter_failed" string="Failed" domain="[('state', '=', 'failed')]"/>
+                <separator/>
+                <group>
+                    <filter name="group_by_printer" string="Printer" domain="[]" context="{'group_by': 'printer_id'}"/>
+                    <filter name="group_by_pos" string="Point of Sale" domain="[]" context="{'group_by': 'pos_config_id'}"/>
+                    <filter name="group_by_state" string="State" domain="[]" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="job_action" model="ir.actions.act_window">
         <field name="name">Print Jobs</field>
         <field name="res_model">receipt_printer.print.job</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="job_view_search"/>
+        <field name="context">{'search_default_filter_pending': 1}</field>
     </record>
 </odoo>

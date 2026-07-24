@@ -11,6 +11,11 @@ class ReceiptPrinterJob(models.Model):
         required=True,
         ondelete='cascade',
     )
+    pos_config_id = fields.Many2one(
+        comodel_name='pos.config',
+        string='Point of Sale',
+        readonly=True,
+    )
     payload = fields.Text(required=True)
     receipt_image = fields.Image("Receipt Image", max_width=400, max_height=600)
     state = fields.Selection(

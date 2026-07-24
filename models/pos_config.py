@@ -39,6 +39,7 @@ class PosConfig(models.Model):
 
         vals = {
             'printer_id': self.receipt_printer_printer_id.id,
+            'pos_config_id': self.id,
         }
 
         if isinstance(order_data, str):
