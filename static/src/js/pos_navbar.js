@@ -6,19 +6,19 @@ import { Navbar } from "@point_of_sale/app/components/navbar/navbar";
 patch(Navbar.prototype, {
     setup() {
         super.setup();
-        this._printJobsInjected = false;
         this._printJobsInterval = setInterval(() => {
             this._injectPrintJobsMenu();
         }, 500);
     },
 
     _injectPrintJobsMenu() {
-        if (this._printJobsInjected) {
+        const menuItems = document.querySelector('.pos-burger-menu-items');
+        if (!menuItems) {
             return;
         }
 
-        const menuItems = document.querySelector('.pos-burger-menu-items');
-        if (!menuItems) {
+        // Avoid duplicates
+        if (menuItems.querySelector('[data-action="print-jobs"]')) {
             return;
         }
 
@@ -32,22 +32,22 @@ patch(Navbar.prototype, {
             }
         }
 
-        const menuItem = document.createElement('div');
-        menuItem.className = 'dropdown-item';
+        if (!insertBefore) {
+            return;
+        }
+
+        const menuItem = document.createElement('span');
+        menuItem.className = 'o-dropdown-item dropdown-item o-navigable';
         menuItem.setAttribute('role', 'menuitem');
+        menuItem.setAttribute('data-action', 'print-jobs');
         menuItem.textContent = 'Print Jobs';
+        menuItem.style.cursor = 'pointer';
         menuItem.addEventListener('click', () => {
             const actionId = "receipt_printer.job_action_pos";
             const url = `/web#action=${actionId}&view_type=list`;
             window.open(url, '_blank');
         });
 
-        if (insertBefore) {
-            menuItems.insertBefore(menuItem, insertBefore);
-        } else {
-            menuItems.appendChild(menuItem);
-        }
-
-        this._printJobsInjected = true;
+        menuItems.insertBefore(menuItem, insertBefore);
     },
 });
